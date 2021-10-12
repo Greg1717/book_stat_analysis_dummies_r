@@ -3,16 +3,169 @@ title: "R Notebook"
 output: html_notebook
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+# Part 3: Drawing Conclusions from Data
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+## Z-testing in R (population variance is known)
+IQ test:  
+H0: mean IQ <= 100  
+H1: mean IQ >  100  
 
 ```{r}
-plot(cars)
+IQ_data <- c(100, 101, 104, 109, 125, 116, 105, 108, 110)
+mean_IQdata <- mean(IQ_data)
+# IQ is known to have a SD of 15
+popsd <- 15
+# test if mean of sample is statistically different from the 
+# known IQ-mean of 100
+mu <- 100
+# Assume that alpha = 0.05
+?pnorm
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+Because you use the z-score in the hypothesis test, the z-score here is called the **test statistic**. 
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+```{r Z score as test statistic}
+z.score <- round((mean(IQ_data) - mu)/
+                     (popsd / sqrt(length(IQ_data))), 3)
+z.score
+```
 
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+```{r ztest function}
+z.test <- function(x, mu, popsd) {
+    one.tail <- NULL
+    z.score <- round((mean(x) - mu)/(popsd/sqrt(length(x))), 3)
+    one.tail.p <- round(pnorm(abs(z.score), lower.tail = F), 3)
+    cat(" z =", z.score, "\n",
+        "one-tailed probability =", one.tail.p, "\n",
+        "two-tailed probability =", 2*one.tail.p)
+}
+
+z.test(IQ_data, mu, popsd)
+```
+
+You set up a critical value, a decision criterion. The **critical value** is determined by alpha. 
+
+```{r critical value as z-score}
+qnorm(
+    p = 0.95,
+    lower.tail = T
+)
+```
+
+```{r critical value as IQ points}
+qnorm(
+    p = 0.95,
+    mean = 100,
+    sd = popsd/sqrt(length(IQ_data)),
+    lower.tail = T
+)
+```
+
+With pnorm() only:
+
+```{r}
+pnorm(q = z.score,
+      lower.tail = FALSE)
+```
+
+P-value is very low, this also suggests that H0 can be rejected.
+
+Same using means and standard error instead of z-score:
+
+```{r}
+pnorm(
+    q = mean_IQdata,
+    mean = 100,
+    sd = popsd/sqrt(length(IQ_data)),
+    lower.tail = FALSE
+)
+```
+
+Show graphically using tigerstat:
+
+```{r}
+library(tigerstats)
+?tigerstats::pnormGC
+
+pnormGC(
+    bound = z.score,
+    region = "above",
+    mean = 0,
+    sd = 1,
+    graph = T
+)
+```
+
+Tigerstat again, but using means instead of z-scores:
+
+```{r}
+pnormGC(
+    bound = mean_IQdata,
+    region = "above",
+    mean = 100,
+    sd = 15/sqrt(length(IQ_data)),
+    graph = T
+)
+```
+
+The **critical value** - the value of z that cuts off 5 percent of the area in a standard normal distribution - is 1.645:
+
+```{r}
+qnorm(p = 0.95)
+```
+
+```{r}
+qnormGC(area = 0.95, graph = TRUE)
+```
+
+In case of a two-tailed test the 5% is divided evenly between the left tail and the right tail.  
+
+```{r}
+qnorm(p = 0.975)
+```
+
+```{r}
+qnormGC(area = 0.975, graph = TRUE)
+```
+
+
+## t for One
+
+You usually have small samples.
+Usually you do NOT know the population parameters.
+Use 't' as a **test statistic**.
+
+```{r}
+FarKlempt_data <- c(3,6,9,9,4,10,6,4,12)
+?t.test
+```
+
+T-test:  
+
+```{r}
+t.test(FarKlempt_data,
+       mu = 4,                      # H0 hypothesis
+       alternative = "greater")
+```
+
+t-value calculation against an assumed (H0) mean of 4
+
+```{r}
+mean_H0 <- 4
+
+t_far_klemp_data <-
+    (mean(FarKlempt_data) - mean_H0) / 
+    (sd(FarKlempt_data) / 
+         sqrt(length(FarKlempt_data)))
+```
+
+```{r}
+?pt
+
+pt(q = 2.8823,
+   df = length(FarKlempt_data)-1,
+   lower.tail = F)
+```
+
+
